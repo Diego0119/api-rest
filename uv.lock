@@ -99,6 +99,7 @@ dependencies = [
     { name = "psycopg" },
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pydantic-settings" },
+    { name = "sqlalchemy" },
 ]
 
 [package.dev-dependencies]
@@ -114,6 +115,7 @@ requires-dist = [
     { name = "psycopg", specifier = ">=3.2.3" },
     { name = "pwdlib", extras = ["argon2"], specifier = ">=0.2.1" },
     { name = "pydantic-settings", specifier = ">=2.6.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.36" },
 ]
 
 [package.metadata.requires-dev]
