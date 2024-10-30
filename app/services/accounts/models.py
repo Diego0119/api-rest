@@ -17,7 +17,7 @@ class User(Base):
     email: Mapped[Optional[str]] = mapped_column(unique=True, index=True)
     password: Mapped[str]
     is_active: Mapped[bool] = mapped_column(default=True)
-
+    last_login: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     created_expenses: Mapped[list["Expense"]] = relationship(back_populates="created_by")
     debts: Mapped[list["Debt"]] = relationship(back_populates="user")
 

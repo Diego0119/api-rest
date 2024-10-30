@@ -83,6 +83,9 @@ class AuthController(Controller):
         if not user or not password_hasher.verify(data.password, user.password):
             raise HTTPException(detail="Invalid username or password", status_code=401)
 
+        user.last_login = datetime.utcnow()
+        users_repo.update(user) 
+
         return oauth2_auth.login(
             identifier=str(user.username),
             response_status_code=HTTP_200_OK,

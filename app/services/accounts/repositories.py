@@ -15,6 +15,11 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         password_hasher.hash(user.password)
         return self.add(user)
 
+    def update_last_login(self, user: User) -> None:
+        """Updates the last_login field of an existing user."""
+        user.last_login = datetime.utcnow()  
+        self.session.commit() 
+
 
 async def provide_user_repository(db_session: Session) -> UserRepository:
     return UserRepository(session=db_session)
