@@ -5,7 +5,7 @@ from litestar.connection import ASGIConnection
 from litestar.exceptions import NotFoundException
 from litestar.security.jwt import OAuth2PasswordBearerAuth, Token
 
-from app import settings
+from app.config import settings
 from app.database import sqlalchemy_config
 
 from .models import User
@@ -16,11 +16,11 @@ async def retrieve_user_handler(
     token: "Token",
     _: "ASGIConnection[Any, Any, Any, Any]",
 ) -> User:
+    """Retrieve user from the database using the token."""
     session_maker = sqlalchemy_config.create_session_maker()
     try:
         with session_maker() as session:
-            user = UserRepository(session=session).get_one(username=token.sub)
-            return user
+            return UserRepository(session=session).get_one(username=token.sub)
     except NotFoundError as e:
         raise NotFoundException("User not found") from e
 

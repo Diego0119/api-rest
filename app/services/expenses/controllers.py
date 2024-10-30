@@ -15,6 +15,8 @@ from .repositories import ExpenseRepository, provide_expense_repository
 
 
 class ExpenseController(Controller):
+    """Controller for expense management."""
+
     path = "/expenses"
     tags = ["expenses | expenses"]
     return_dto = ExpenseDTO
@@ -41,8 +43,11 @@ class ExpenseController(Controller):
     async def update_expense(
         self, expenses_repo: ExpenseRepository, expense_id: int, data: DTOData[Expense]
     ) -> Expense:
-        expense, _ = expenses_repo.get_and_update(id=expense_id, **data.as_builtins(), match_fields=["id"])
-        return expense
+        try:
+            expense, _ = expenses_repo.get_and_update(id=expense_id, **data.as_builtins(), match_fields=["id"])
+            return expense
+        except NotFoundError:
+            raise HTTPException(detail="User not found", status_code=404)
 
     @delete("/{expense_id:int}")
     async def delete_expense(self, expenses_repo: ExpenseRepository, expense_id: int) -> None:

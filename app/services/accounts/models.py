@@ -21,5 +21,5 @@ class User(Base):
     created_expenses: Mapped[list["Expense"]] = relationship(back_populates="created_by")
     debts: Mapped[list["Debt"]] = relationship(back_populates="user")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<User(username={self.username})>"

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from advanced_alchemy.repository import SQLAlchemySyncRepository
 from sqlalchemy.orm import Session
 
@@ -16,10 +18,11 @@ class ExpenseRepository(SQLAlchemySyncRepository[Expense]):
         # calculate the amount per person
         amount_per_person = int(expense.amount / (len(debts) + 1))
         # create debts for each user
-        expense.debts = [
-            Debt(amount=amount_per_person, user_id=d.user_id) for d in debts
-        ]
+        expense.debts = [Debt(amount=amount_per_person, user_id=d.user_id) for d in debts]
         expense.created_by = created_by
+        # if datetime is not provided, set it to the current time
+        if not expense.datetime:
+            expense.datetime = datetime.now()
 
         return self.add(expense)
 

@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from advanced_alchemy.exceptions import NotFoundError
+from advanced_alchemy.exceptions import IntegrityError, NotFoundError
 from litestar import Controller, Request, Response, Router, delete, get, patch, post
 from litestar.di import Provide
 from litestar.dto import DTOData
@@ -17,6 +17,8 @@ from .security import oauth2_auth
 
 
 class UserController(Controller):
+    """Controller for user management."""
+
     path = "/users"
     tags = ["accounts | users"]
     return_dto = UserDTO
@@ -28,7 +30,10 @@ class UserController(Controller):
 
     @post(dto=UserCreateDTO)
     async def create_user(self, users_repo: UserRepository, data: User) -> User:
-        return users_repo.add_with_password_hash(data)
+        try:
+            return users_repo.add_with_password_hash(data)
+        except IntegrityError:
+            raise HTTPException(detail="Username and/or email already in use", status_code=400)
 
     @get("/me", return_dto=UserFullDTO)
     async def get_my_user(self, request: "Request[User, Token, Any]", users_repo: UserRepository) -> User:
@@ -37,7 +42,10 @@ class UserController(Controller):
 
     @get("/{user_id:int}", return_dto=UserFullDTO)
     async def get_user(self, user_id: int, users_repo: UserRepository) -> User:
-        return users_repo.get(user_id)
+        try:
+            return users_repo.get(user_id)
+        except NotFoundError:
+            raise HTTPException(detail="User not found", status_code=404)
 
     @patch("/{user_id:int}", dto=UserUpdateDTO)
     async def update_user(self, user_id: int, data: DTOData[User], users_repo: UserRepository) -> User:
@@ -49,10 +57,15 @@ class UserController(Controller):
 
     @delete("/{user_id:int}")
     async def delete_user(self, user_id: int, users_repo: UserRepository) -> None:
-        users_repo.delete(user_id)
+        try:
+            users_repo.delete(user_id)
+        except NotFoundError:
+            raise HTTPException(detail="User not found", status_code=404)
 
 
 class AuthController(Controller):
+    """Controller for authentication (login and logout)."""
+
     path = "/auth"
     tags = ["accounts | auth"]
 
@@ -65,7 +78,7 @@ class AuthController(Controller):
         self,
         data: Annotated[Login, Body(media_type=RequestEncodingType.URL_ENCODED)],
         users_repo: UserRepository,
-    ) -> dict:
+    ) -> Response[Any]:
         user = users_repo.get_one_or_none(username=data.username)
         if not user or not password_hasher.verify(data.password, user.password):
             raise HTTPException(detail="Invalid username or password", status_code=401)

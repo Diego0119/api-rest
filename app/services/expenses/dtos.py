@@ -1,21 +1,18 @@
-from advanced_alchemy.extensions.litestar import SQLAlchemyDTO
-from litestar.dto import DTOConfig
+from advanced_alchemy.extensions.litestar import SQLAlchemyDTO, SQLAlchemyDTOConfig
 
 from .models import Debt, Expense
 
 
 class ExpenseDTO(SQLAlchemyDTO[Expense]):
-    config = DTOConfig(exclude={"created_by.password"})
+    config = SQLAlchemyDTOConfig(exclude={"created_by.password"})
 
 
 class ExpenseCreateDTO(SQLAlchemyDTO[Expense]):
-    config = DTOConfig(
-        exclude={"id", "created_by_id", "created_by", "debts.0.expense_id", "debts.0.amount", "debts.0.paid_on"}
-    )
+    config = SQLAlchemyDTOConfig(include={"title", "description", "datetime", "amount", "debts.0.user_id"})
 
 
 class ExpenseUpdateDTO(SQLAlchemyDTO[Expense]):
-    config = DTOConfig(exclude={"id", "created_by"}, partial=True)
+    config = SQLAlchemyDTOConfig(exclude={"id", "created_by"}, partial=True)
 
 
 class DebtDTO(SQLAlchemyDTO[Debt]):
@@ -23,8 +20,8 @@ class DebtDTO(SQLAlchemyDTO[Debt]):
 
 
 class DebtCreateDTO(SQLAlchemyDTO[Debt]):
-    config = DTOConfig(exclude={"id"})
+    config = SQLAlchemyDTOConfig(exclude={"id"})
 
 
 class DebtUpdateDTO(SQLAlchemyDTO[Debt]):
-    config = DTOConfig(exclude={"id"}, partial=True)
+    config = SQLAlchemyDTOConfig(exclude={"id"}, partial=True)
