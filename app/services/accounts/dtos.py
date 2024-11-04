@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from advanced_alchemy.extensions.litestar import SQLAlchemyDTO, SQLAlchemyDTOConfig
 from litestar.dto import DataclassDTO
+from pydantic import BaseModel, Field
 
 from .models import User
 
@@ -21,12 +22,20 @@ class UserCreateDTO(SQLAlchemyDTO[User]):
 class UserUpdateDTO(SQLAlchemyDTO[User]):
     config = SQLAlchemyDTOConfig(exclude={"id", "password"}, partial=True)
 
-
 @dataclass
 class Login:
     username: str
     password: str
 
+@dataclass
+class ChangePassword:
+    current_password: str 
+    new_password: str 
+
 
 class LoginDTO(DataclassDTO[Login]):
+    pass
+
+
+class ChangePasswordDTO(DataclassDTO[ChangePassword]):
     pass

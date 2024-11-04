@@ -9,8 +9,8 @@ from litestar.exceptions import HTTPException
 from litestar.params import Body
 from litestar.security.jwt import Token
 from litestar.status_codes import HTTP_200_OK
-
-from .dtos import Login, LoginDTO, UserCreateDTO, UserDTO, UserFullDTO, UserUpdateDTO
+from pydantic import BaseModel
+from .dtos import Login, LoginDTO, UserCreateDTO, UserDTO, UserFullDTO, UserUpdateDTO, ChangePasswordDTO
 from .models import User
 from .repositories import UserRepository, password_hasher, provide_user_repository
 from .security import oauth2_auth
@@ -62,6 +62,61 @@ class UserController(Controller):
         except NotFoundError:
             raise HTTPException(detail="User not found", status_code=404)
 
+    class ChangePasswordRequest(BaseModel):
+        current_password: str
+        new_password: str
+
+    @post("/me/change-password", return_dto=UserFullDTO)
+    async def change_password(
+        self,
+        request: "Request[User, Token, Any]",
+        users_repo: UserRepository, 
+        data: ChangePasswordRequest,
+    ) -> UserFullDTO:
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            raise HTTPException(detail="Token de autenticación faltante o inválido", status_code=401)
+        token = auth_header.split(" ")[1]
+
+        user = users_repo.retrieve_user_from_token(token)
+
+        # Verificar la contraseña actual
+        if data.current_password != user.password:
+            raise HTTPException(detail="Contraseña actual incorrecta", status_code=401)
+
+        # Verificacion de las ultimas 3 contraseñas
+        # if data.new_password in user.last_passwords[-3:]:
+        #     raise HTTPException(detail="La nueva contraseña no puede ser igual a las últimas 3 contraseñas utilizadas", status_code=400)
+
+        # Validar la nueva contraseña
+        if len(data.new_password) < 8:
+            raise HTTPException(detail="La nueva contraseña debe tener al menos 8 caracteres", status_code=400)
+
+        # Hash de la nueva contraseña
+        # hashed_new_password = password_hasher.hash(data.new_password)
+        try:
+            # users_repo.update_password(user, hashed_new_password)
+            users_repo.update_password(user, data.new_password)
+
+            # Actualizar la lista de contraseñas
+            # user.last_passwords.append(user.password)  # Agregar la antigua contraseña a la lista
+            # if len(user.last_passwords) > 3:
+            #     user.last_passwords.pop(0)  # Mantener solo las últimas 3 contraseñas
+
+            users_repo.update(user)
+            user_data = {
+                "message": "Contraseña actualizada correctamente",
+                "user_info":{
+                "id": user.id,
+                "username": user.username,
+                "full_name": user.full_name,
+                "email": user.email,
+                }
+            }
+            return user_data 
+        except IntegrityError:
+            raise HTTPException(detail="Error al actualizar la contraseña", status_code=500)
+
 
 class AuthController(Controller):
     """Controller for authentication (login and logout)."""
@@ -78,20 +133,30 @@ class AuthController(Controller):
         self,
         data: Annotated[Login, Body(media_type=RequestEncodingType.URL_ENCODED)],
         users_repo: UserRepository,
-    ) -> Response[Any]:
-        user = users_repo.get_one_or_none(username=data.username)
-        if not user or not password_hasher.verify(data.password, user.password):
-            raise HTTPException(detail="Invalid username or password", status_code=401)
+    ) -> Response:
+            user = users_repo.get_one_or_none(username=data.username)
 
-        user.last_login = datetime.utcnow()
-        users_repo.update(user) 
+            if not user or not data.password == user.password:
+                raise HTTPException(detail="Invalid username or password", status_code=401)
 
-        return oauth2_auth.login(
-            identifier=str(user.username),
-            response_status_code=HTTP_200_OK,
-            token_extras={"name": user.full_name, "email": user.email or ""},
-        )
+            users_repo.update_last_login(user)
+            
+            token = users_repo.create_token(user)
 
+            user_data = {
+                "id": user.id,
+                "username": user.username,
+                "full_name": user.full_name,
+                "email": user.email,
+            }
+
+            return Response(
+                content={"access_token": token, "user": user_data},
+                status_code=200,
+                media_type="application/json"
+            )
+
+            
     @post("/logout")
     async def logout(self) -> Response[None]:
         response = Response(content=None, status_code=HTTP_200_OK)
