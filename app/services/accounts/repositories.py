@@ -53,7 +53,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
 
     def create_token(self,user):
         secret_key = "secret"
-        expiration_time = datetime.utcnow() + timedelta(minutes=30)
+        expiration_time = datetime.utcnow() + timedelta(minutes=180)
         payload = {
             'user_id': user.id,
             'name': user.full_name,
@@ -61,7 +61,9 @@ class UserRepository(SQLAlchemySyncRepository[User]):
             'exp': expiration_time 
         }
         token = jwt.encode(payload, secret_key, algorithm='HS256')
-        return token
+
+        expiration_minutes = (expiration_time - datetime.utcnow()).total_seconds() // 60
+        return token, expiration_minutes
 
 async def provide_user_repository(db_session: Session) -> UserRepository:
     return UserRepository(session=db_session)

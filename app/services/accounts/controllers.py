@@ -141,7 +141,7 @@ class AuthController(Controller):
 
             users_repo.update_last_login(user)
             
-            token = users_repo.create_token(user)
+            token, expiration_minutes = users_repo.create_token(user)
 
             user_data = {
                 "id": user.id,
@@ -151,7 +151,11 @@ class AuthController(Controller):
             }
 
             return Response(
-                content={"access_token": token, "user": user_data},
+                content={
+                "access_token": token,
+                "expires_at": f"{expiration_minutes} minutes",
+                "user": user_data
+            },
                 status_code=200,
                 media_type="application/json"
             )
