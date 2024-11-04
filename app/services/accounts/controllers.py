@@ -80,7 +80,7 @@ class UserController(Controller):
 
         user = users_repo.retrieve_user_from_token(token)
 
-        # Verificar la contraseña actual
+        # Verificar la contraseña actua
         if data.current_password != user.password:
             raise HTTPException(detail="Contraseña actual incorrecta", status_code=401)
 
@@ -156,7 +156,7 @@ class AuthController(Controller):
                 media_type="application/json"
             )
 
-            
+
     @post("/logout")
     async def logout(self) -> Response[None]:
         response = Response(content=None, status_code=HTTP_200_OK)
