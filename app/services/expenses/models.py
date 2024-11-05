@@ -1,14 +1,19 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, Column, Enum, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.database import Base
+import enum
 
 if TYPE_CHECKING:
     from app.services.accounts.models import User
 
+
+class ExpenseStatus(enum.Enum):
+    PENDING = "Pending"
+    PAID = "Paid"
+    CANCELED = "Canceled" 
 
 class Expense(Base):
     __tablename__ = "expenses_expenses"
@@ -18,10 +23,15 @@ class Expense(Base):
     description: Mapped[Optional[str]]
     datetime: Mapped[Optional[datetime]]
     amount: Mapped[int]
+    status = Column(Enum(ExpenseStatus), default=ExpenseStatus.PENDING, nullable=False)
+    is_deleted = Column(Boolean, default=False)  
     created_by_id: Mapped[int] = mapped_column(ForeignKey("accounts_users.id"))
 
     created_by: Mapped["User"] = relationship(back_populates="created_expenses")
     debts: Mapped[list["Debt"]] = relationship(back_populates="expense", cascade="all, delete")
+
+    def update_status(self):
+        self.status = ExpenseStatus.PAID if all(debt.paid_on is not None for debt in self.debts) else ExpenseStatus.PENDING
 
     def __repr__(self) -> str:
         return f"<Expense(title={self.title})>"

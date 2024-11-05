@@ -58,7 +58,9 @@ class UserRepository(SQLAlchemySyncRepository[User]):
             'user_id': user.id,
             'name': user.full_name,
             'email': user.email,
-            'exp': expiration_time 
+            "iat": datetime.utcnow(),
+            'exp': expiration_time,
+            'sub': user.id
         }
         token = jwt.encode(payload, secret_key, algorithm='HS256')
 

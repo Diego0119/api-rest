@@ -14,6 +14,9 @@ class ExpenseCreateDTO(SQLAlchemyDTO[Expense]):
 class ExpenseUpdateDTO(SQLAlchemyDTO[Expense]):
     config = SQLAlchemyDTOConfig(exclude={"id", "created_by"}, partial=True)
 
+class ExpensesDTO(SQLAlchemyDTO[Expense]):
+    config = SQLAlchemyDTOConfig(exclude={"is_deleted"}, partial=True)
+
 
 class DebtDTO(SQLAlchemyDTO[Debt]):
     pass

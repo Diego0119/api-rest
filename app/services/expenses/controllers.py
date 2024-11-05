@@ -9,7 +9,7 @@ from litestar.security.jwt import Token
 
 from app.services.accounts.models import User
 
-from .dtos import ExpenseCreateDTO, ExpenseDTO, ExpenseUpdateDTO
+from .dtos import ExpenseCreateDTO, ExpenseDTO, ExpenseUpdateDTO, ExpensesDTO
 from .models import Expense
 from .repositories import ExpenseRepository, provide_expense_repository
 
@@ -22,7 +22,7 @@ class ExpenseController(Controller):
     return_dto = ExpenseDTO
     dependencies = {"expenses_repo": Provide(provide_expense_repository)}
 
-    @get()
+    @get(return_dto=ExpensesDTO)
     async def list_expenses(self, expenses_repo: ExpenseRepository) -> list[Expense]:
         return expenses_repo.list()
 
@@ -30,6 +30,8 @@ class ExpenseController(Controller):
     async def create_expense(
         self, request: "Request[User, Token, Any]", expenses_repo: ExpenseRepository, data: Expense
     ) -> Expense:
+        if not request.user:
+            raise HTTPException(detail="Usuario no autenticado", status_code=401)
         return expenses_repo.create_with_debts(data, request.user)
 
     @get("/{expense_id:int}")
@@ -41,7 +43,7 @@ class ExpenseController(Controller):
 
     @patch("/{expense_id:int}", dto=ExpenseUpdateDTO)
     async def update_expense(
-        self, expenses_repo: ExpenseRepository, expense_id: int, data: DTOData[Expense]
+        self,expenses_repo: ExpenseRepository, expense_id: int, data: DTOData[Expense]
     ) -> Expense:
         try:
             expense, _ = expenses_repo.get_and_update(id=expense_id, **data.as_builtins(), match_fields=["id"])
@@ -52,9 +54,21 @@ class ExpenseController(Controller):
     @delete("/{expense_id:int}")
     async def delete_expense(self, expenses_repo: ExpenseRepository, expense_id: int) -> None:
         try:
-            expenses_repo.delete(expense_id)
-        except NotFoundError:
-            raise HTTPException(detail="Expense not found", status_code=404)
+            expenses_repo.soft_delete(expense_id)
+        except NotFoundException:
+            raise HTTPException(status_code=404, detail="Gasto no encontrado.")
+
+    @post("/{id:int}/pay")
+    async def pay_expense(id:int, request: "Request[User, Token, Any]",expenses_repo: ExpenseRepository,) -> str:
+        # token = request.headers.get("Authorization")  
+        # user = expenses_repo.retrieve_user_from_token(token)
+        # session_maker = sqlalchemy_config.create_session_maker()
+
+        # if user is None:
+        #     raise HTTPException(status_code=401, detail="Usuario no autenticado.")  # Devuelve un error si no hay usuario
+
+        result = expenses_repo.update_expense(1,3)
+        return result
 
 
 expenses_router = Router(

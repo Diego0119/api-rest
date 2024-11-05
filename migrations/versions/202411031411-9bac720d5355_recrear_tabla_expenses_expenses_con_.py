@@ -28,6 +28,7 @@ def upgrade():
         sa.Column("description", sa.String(), nullable=False),
         sa.Column("datetime", sa.DateTime(), nullable=False),
         sa.Column("amount", sa.Integer(), nullable=False),
+        sa.Column('status', sa.Enum('PENDING', 'PAID', 'CANCELED', name='expensestatus'), nullable=False, server_default='PENDING'),
         sa.Column("created_by_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["created_by_id"],
