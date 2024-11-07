@@ -10,7 +10,7 @@ from litestar.params import Body
 from litestar.security.jwt import Token
 from litestar.status_codes import HTTP_200_OK
 from pydantic import BaseModel
-from .dtos import Login, LoginDTO, UserCreateDTO, UserDTO, UserFullDTO, UserUpdateDTO, ChangePasswordDTO
+from .dtos import Login, LoginDTO, UserCreateDTO, UserDTO, UserFullDTO, UserUpdateDTO, ChangePasswordDTO, DebtDTO
 from .models import User
 from .repositories import UserRepository, password_hasher, provide_user_repository
 from .security import oauth2_auth
@@ -43,9 +43,33 @@ class UserController(Controller):
     @get("/{user_id:int}", return_dto=UserFullDTO)
     async def get_user(self, user_id: int, users_repo: UserRepository) -> User:
         try:
-            return users_repo.get(user_id)
+            user = users_repo.get_user_by_id(user_id)
+        
+            expenses = users_repo.get_user_expenses(user_id, status="Pending")
+            debts = users_repo.get_user_debts(user_id) 
+    
+            user.expenses = expenses
+            user.debts = debts
+            return user
         except NotFoundError:
             raise HTTPException(detail="User not found", status_code=404)
+
+    @get("/{user_id:int}/expenses", return_dto=UserFullDTO)
+    async def get_user_expenses(self, user_id: int, users_repo: UserRepository) -> list[UserFullDTO]:
+        try:
+            expenses = users_repo.get_user_expenses(user_id)
+            return [expense.to_dict() for expense in expenses] 
+        except NotFoundError:
+            raise HTTPException(detail="Expenses not found", status_code=404)
+
+    @get("/{user_id:int}/debts", return_dto=UserFullDTO)
+    async def get_user_debts(self, user_id: int, users_repo: UserRepository) -> list[UserFullDTO]:
+        try:
+            debts = users_repo.get_user_all_debts(user_id)
+            return [debt.to_dict() for debt in debts] 
+        except NotFoundError:
+            raise HTTPException(detail="Debts not found", status_code=404)
+
 
     @patch("/{user_id:int}", dto=UserUpdateDTO)
     async def update_user(self, user_id: int, data: DTOData[User], users_repo: UserRepository) -> User:
@@ -58,7 +82,7 @@ class UserController(Controller):
     @delete("/{user_id:int}")
     async def delete_user(self, user_id: int, users_repo: UserRepository) -> None:
         try:
-            users_repo.delete(user_id)
+            users_repo.delete_user(user_id)
         except NotFoundError:
             raise HTTPException(detail="User not found", status_code=404)
 
@@ -84,13 +108,11 @@ class UserController(Controller):
         if data.current_password != user.password:
             raise HTTPException(detail="Contraseña actual incorrecta", status_code=401)
 
+        if data.new_password in user.last_passwords[-3:]:
+            raise HTTPException(detail="La nueva contraseña no puede ser igual a las últimas 3 contraseñas utilizadas", status_code=400)
         # Verificacion de las ultimas 3 contraseñas
         # if data.new_password in user.last_passwords[-3:]:
         #     raise HTTPException(detail="La nueva contraseña no puede ser igual a las últimas 3 contraseñas utilizadas", status_code=400)
-
-        # Validar la nueva contraseña
-        if len(data.new_password) < 8:
-            raise HTTPException(detail="La nueva contraseña debe tener al menos 8 caracteres", status_code=400)
 
         # Hash de la nueva contraseña
         # hashed_new_password = password_hasher.hash(data.new_password)
@@ -98,10 +120,9 @@ class UserController(Controller):
             # users_repo.update_password(user, hashed_new_password)
             users_repo.update_password(user, data.new_password)
 
-            # Actualizar la lista de contraseñas
-            # user.last_passwords.append(user.password)  # Agregar la antigua contraseña a la lista
-            # if len(user.last_passwords) > 3:
-            #     user.last_passwords.pop(0)  # Mantener solo las últimas 3 contraseñas
+            user.last_passwords.append(user.password)  # Agregar la antigua contraseña a la lista
+            if len(user.last_passwords) > 3:
+                user.last_passwords.pop(0)  # Mantener solo las últimas 3 contraseñas
 
             users_repo.update(user)
             user_data = {

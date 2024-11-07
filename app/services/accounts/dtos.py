@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from advanced_alchemy.extensions.litestar import SQLAlchemyDTO, SQLAlchemyDTOConfig
 from litestar.dto import DataclassDTO
 from pydantic import BaseModel, Field
-
 from .models import User
 
 
@@ -21,6 +20,11 @@ class UserCreateDTO(SQLAlchemyDTO[User]):
 
 class UserUpdateDTO(SQLAlchemyDTO[User]):
     config = SQLAlchemyDTOConfig(exclude={"id", "password"}, partial=True)
+
+class DebtDTO(BaseModel):
+    id: int 
+    amount: float
+    due_date: str
 
 @dataclass
 class Login:

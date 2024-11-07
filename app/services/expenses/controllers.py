@@ -59,15 +59,12 @@ class ExpenseController(Controller):
             raise HTTPException(status_code=404, detail="Gasto no encontrado.")
 
     @post("/{id:int}/pay")
-    async def pay_expense(id:int, request: "Request[User, Token, Any]",expenses_repo: ExpenseRepository,) -> str:
-        # token = request.headers.get("Authorization")  
-        # user = expenses_repo.retrieve_user_from_token(token)
-        # session_maker = sqlalchemy_config.create_session_maker()
+    async def pay_expense(self,id:int, request: "Request[User, Token, Any]",expenses_repo: ExpenseRepository,) -> str:
+        if not request.user:
+            raise HTTPException(detail="Usuario no autenticado", status_code=401)
 
-        # if user is None:
-        #     raise HTTPException(status_code=401, detail="Usuario no autenticado.")  # Devuelve un error si no hay usuario
-
-        result = expenses_repo.update_expense(1,3)
+        user_id = request.user.id
+        result = expenses_repo.update_expense(id,user_id)
         return result
 
 

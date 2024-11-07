@@ -6,21 +6,19 @@ import jwt
 from app.services.accounts.models import User
 from litestar import Controller, Request, Response
 from .models import Debt, Expense
-
+from sqlalchemy.orm import aliased
 
 class ExpenseRepository(SQLAlchemySyncRepository[Expense]):
     model_type = Expense
 
     def create_with_debts(self, expense: Expense, created_by: User) -> Expense:
         """"""
-        # exclude the user who created the expense from the debts (if it is included)
         debts = [d for d in expense.debts if d.user_id != created_by.id]
         # calculate the amount per person
         amount_per_person = int(expense.amount / (len(debts) + 1))
         # create debts for each user
         expense.debts = [Debt(amount=amount_per_person, user_id=d.user_id) for d in debts]
         expense.created_by = created_by
-        # if datetime is not provided, set it to the current time
         if not expense.datetime:
             expense.datetime = datetime.now()
 
@@ -52,23 +50,29 @@ class ExpenseRepository(SQLAlchemySyncRepository[Expense]):
         if not debts:
             raise HTTPException(detail="No hay deudas asociadas a este gasto.", status_code=400)
 
-        all_debts_paid = True  # Variable para verificar si todas las deudas han sido pagadas
+        all_debts_paid = True 
 
         for debt in debts:
-            if debt.user_id == user_id:  # Solo procesar la deuda del usuario específico
-                if debt.paid_on is None:  # Si la deuda no ha sido pagada
-                    debt.paid_on = datetime.now()  # Establecer la fecha de pago
-                    debt.amount = 0  # Marcar la deuda como pagada
+            if debt.user_id != user_id:
+                return Response(
+                content={"message": "La deuda no es suya, solo la puede pagar el usuario que carga con ella."},
+                status_code=403,
+                media_type="application/json"
+                )
+                
+            if debt.user_id == user_id: 
+                if debt.paid_on is None:  
+                    debt.paid_on = datetime.now()  
+                    debt.amount = 0  
                 else:
-                    all_debts_paid = False  # Hay al menos una deuda que no ha sido pagada
+                    all_debts_paid = False  
 
-                self.session.add(debt)  # Añadir la deuda a la sesión para actualizarla
+                self.session.add(debt)  
 
-        # Actualizar el estado del gasto según el estado de las deudas
         expense.update_status()
-        self.session.add(expense)  # Añadir el gasto a la sesión para actualizarlo
+        self.session.add(expense)  
 
-        self.session.commit()  # Confirmar cambios en la base de datos
+        self.session.commit()  
 
         return Response(
             content={"message": "Deuda(s) pagada(s) correctamente"},
