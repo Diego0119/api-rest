@@ -41,19 +41,35 @@ class UserController(Controller):
         return users_repo.get(request.user.id)
 
     @get("/{user_id:int}", return_dto=UserFullDTO)
-    async def get_user(self, user_id: int, users_repo: UserRepository) -> User:
+    async def get_user(self, user_id: int, users_repo: UserRepository) -> UserFullDTO:
         try:
-            user = users_repo.get_user_by_id(user_id)
-        
-            expenses = users_repo.get_user_expenses(user_id, status="Pending")
-            debts = users_repo.get_user_debts(user_id) 
-    
-            user.expenses = expenses
-            user.debts = debts
-            return user
+            debts = users_repo.get_user_debts(user_id)
+            expenses = users_repo.get_user_expenses(user_id, 'PENDING')
+
+            response = {
+            "user_id": user_id,
+            "debts": [
+                {
+                    "id": debt.expense_id,
+                    "amount": debt.amount,
+                    "paid_on": debt.paid_on.strftime('%Y-%m-%d %H:%M:%S') if debt.paid_on else None
+                }
+                for debt in debts
+            ],
+            "expenses": [
+                {
+                    "id": expense.id,
+                    "amount": expense.amount,
+                    "status": expense.status
+                }
+                for expense in expenses
+            ]
+            }
+
+            return response 
+            
         except NotFoundError:
             raise HTTPException(detail="User not found", status_code=404)
-
     @get("/{user_id:int}/expenses", return_dto=UserFullDTO)
     async def get_user_expenses(self, user_id: int, users_repo: UserRepository) -> list[UserFullDTO]:
         try:

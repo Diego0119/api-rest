@@ -40,5 +40,5 @@ oauth2_auth = OAuth2PasswordBearerAuth[User](
     retrieve_user_handler=retrieve_user_handler,
     token_secret=settings.secret_key.get_secret_value(),
     token_url="/accounts/auth/login",
-    exclude=["/accounts/auth", "/schema","/accounts/auth/login", "/accounts/users"], # debo cambiarlo y que pida el jwt
+    exclude=["/accounts/auth", "/schema","/accounts/auth/login"],
 )

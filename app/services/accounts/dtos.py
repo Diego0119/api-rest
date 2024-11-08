@@ -9,10 +9,8 @@ from .models import User
 class UserDTO(SQLAlchemyDTO[User]):
     config = SQLAlchemyDTOConfig(exclude={"password"}, max_nested_depth=0)
 
-
 class UserFullDTO(SQLAlchemyDTO[User]):
-    config = SQLAlchemyDTOConfig(exclude={"password"})
-
+    config = SQLAlchemyDTOConfig(exclude={"password"}) 
 
 class UserCreateDTO(SQLAlchemyDTO[User]):
     config = SQLAlchemyDTOConfig(exclude={"id", "is_active"}, max_nested_depth=0)
@@ -21,10 +19,6 @@ class UserCreateDTO(SQLAlchemyDTO[User]):
 class UserUpdateDTO(SQLAlchemyDTO[User]):
     config = SQLAlchemyDTOConfig(exclude={"id", "password"}, partial=True)
 
-class DebtDTO(BaseModel):
-    id: int 
-    amount: float
-    due_date: str
 
 @dataclass
 class Login:
@@ -43,3 +37,14 @@ class LoginDTO(DataclassDTO[Login]):
 
 class ChangePasswordDTO(DataclassDTO[ChangePassword]):
     pass
+
+class ExpenseDTO(BaseModel):
+    id: int
+    amount: float
+    status: str
+
+class DebtDTO(BaseModel):
+    id: int 
+    amount: float
+    paid_on: str
+

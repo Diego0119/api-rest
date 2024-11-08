@@ -97,17 +97,14 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         
         if status:
             query = query.filter(Expense.status == status)
-        else:
-            query = query.filter(Expense.status != 'PAID')
-
-        return query.all() 
+        
+        return query
 
     def get_user_debts(self, user_id: int):
         debts = self.session.query(Debt).filter(
             Debt.user_id == user_id,
             Debt.paid_on.is_(null())
         ).all()
-        # ME FALTA PODER FILTRAR EN LOS QUE EN PAID_ON SEA NULL, LO OTRO DEL PUNTO 6 ESTA BIEN.
 
         return debts
 
