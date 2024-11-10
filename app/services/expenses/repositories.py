@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from typing import Optional, Any, overload
 from advanced_alchemy.repository import SQLAlchemySyncRepository
 from sqlalchemy.orm import Session
 import jwt
@@ -7,6 +7,8 @@ from app.services.accounts.models import User
 from litestar import Controller, Request, Response
 from .models import Debt, Expense
 from sqlalchemy.orm import aliased
+from litestar.exceptions import HTTPException
+
 
 class ExpenseRepository(SQLAlchemySyncRepository[Expense]):
     model_type = Expense
@@ -24,26 +26,26 @@ class ExpenseRepository(SQLAlchemySyncRepository[Expense]):
 
         return self.add(expense)
 
-    def get_one(self, id: int) -> Expense:
+    def get_one(self, id: int) -> Optional[Expense]:  # type: ignore[override]
         """Obtiene un gasto por su ID."""
         return self.session.query(Expense).filter_by(id=id).first()
 
-    def list(self) -> list[Expense]:
+    def list(self) -> list[Expense]: # type: ignore[override]
         return self.session.query(Expense).filter(Expense.is_deleted == False).all()
 
-    def get_expense_by_id(self, expense_id) -> Expense:
+    def get_expense_by_id(self, expense_id:int) -> Optional[Expense]:
         return self.session.query(Expense).filter(Expense.id == expense_id).one_or_none()
 
-    def update(self, expense: Expense) -> None:
+    def update(self, expense: Expense) -> None: # type: ignore[override]
         self.session.add(expense) 
         self.session.commit()  
 
-    def update_expense(self, expense_id: int, user_id: int):
+    def update_expense(self, expense_id: int, user_id: int) ->Response[Any]:
         """Realiza el pago de un gasto si tiene deudas asociadas para el usuario especificado."""
         expense = self.get_expense_by_id(expense_id)
 
         if not expense:
-            raise NotFoundException("Gasto no encontrado.")
+            raise HTTPException(detail="Gasto no encontrado", status_code=404)
 
         debts = expense.debts
 
@@ -84,24 +86,24 @@ class ExpenseRepository(SQLAlchemySyncRepository[Expense]):
         try:
             payload = jwt.decode(token, "secret", algorithms=["HS256"])
         except jwt.exceptions.DecodeError:
-            raise IndentationError("Token inválido o con padding incorrecto.")
+            raise HTTPException(detail="Token invalido o incorrecto.", status_code=403)
         except jwt.ExpiredSignatureError:
-            raise AuthenticationError("Token expirado.")
+            raise HTTPException(detail="Token expirado.", status_code=403)
         except jwt.InvalidTokenError:
-            raise AuthenticationError("Token inválido.")
+            raise HTTPException(detail="Token invalido.", status_code=403)
 
-            user_id = payload.get("sub")
+            user_id: int = payload.get("sub")
 
         if not user_id:
-            raise AuthenticationError("Token inválido o usuario no encontrado.")
+            raise HTTPException(detail="Token invalido o usuario no encontrado.", status_code=403)
         
-            user = self.get_user_by_id(user_id)
+            user: User = self.get_user_by_id(user_id)
         if not user:
-            raise AuthenticationError("Usuario no encontrado.")
+            raise HTTPException(detail="Usuario no encontrado.", status_code=404)
         
         return user
 
-    def soft_delete(self, expense_id: int) -> Response:
+    def soft_delete(self, expense_id: int) -> Response[Any]:
         """Marca el gasto como eliminado en lugar de eliminarlo físicamente."""
         expense = self.get_expense_by_id(expense_id)
         if not expense:

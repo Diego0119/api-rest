@@ -23,14 +23,14 @@ class Expense(Base):
     description: Mapped[Optional[str]]
     datetime: Mapped[Optional[datetime]]
     amount: Mapped[int]
-    status = Column(Enum(ExpenseStatus), default=ExpenseStatus.PENDING, nullable=False)
-    is_deleted = Column(Boolean, default=False)  
+    status: Mapped[ExpenseStatus] = mapped_column(Enum(ExpenseStatus), default=ExpenseStatus.PENDING, nullable=False)
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_by_id: Mapped[int] = mapped_column(ForeignKey("accounts_users.id"))
 
     created_by: Mapped["User"] = relationship(back_populates="created_expenses")
     debts: Mapped[list["Debt"]] = relationship(back_populates="expense", cascade="all, delete")
 
-    def update_status(self):
+    def update_status(self)->None:
         self.status = ExpenseStatus.PAID if all(debt.paid_on is not None for debt in self.debts) else ExpenseStatus.PENDING
 
     def __repr__(self) -> str:

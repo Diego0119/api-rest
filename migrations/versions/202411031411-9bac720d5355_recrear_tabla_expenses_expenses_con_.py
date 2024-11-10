@@ -18,7 +18,7 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def upgrade():
+def upgrade() ->None:
     op.drop_table('expenses_expenses')
     
     op.create_table(
@@ -37,5 +37,5 @@ def upgrade():
         sa.PrimaryKeyConstraint("id"),
     )
 
-def downgrade():
+def downgrade() ->None:
     op.drop_table('expenses_expenses')

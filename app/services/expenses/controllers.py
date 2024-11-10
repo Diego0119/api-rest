@@ -1,7 +1,7 @@
 from typing import Any
 
 from advanced_alchemy.exceptions import NotFoundError
-from litestar import Controller, Request, Router, delete, get, patch, post
+from litestar import Controller, Request, Router, delete, get, patch, post, Response
 from litestar.di import Provide
 from litestar.dto import DTOData
 from litestar.exceptions import HTTPException
@@ -55,11 +55,11 @@ class ExpenseController(Controller):
     async def delete_expense(self, expenses_repo: ExpenseRepository, expense_id: int) -> None:
         try:
             expenses_repo.soft_delete(expense_id)
-        except NotFoundException:
+        except HTTPException:
             raise HTTPException(status_code=404, detail="Gasto no encontrado.")
 
     @post("/{id:int}/pay")
-    async def pay_expense(self,id:int, request: "Request[User, Token, Any]",expenses_repo: ExpenseRepository,) -> str:
+    async def pay_expense(self,id:int, request: "Request[User, Token, Any]",expenses_repo: ExpenseRepository,) -> Response[Any]:
         if not request.user:
             raise HTTPException(detail="Usuario no autenticado", status_code=401)
 

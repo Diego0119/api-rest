@@ -11,7 +11,9 @@ from .models import User
 from app.services.expenses.models import Debt
 from app.services.expenses.models import Expense
 from litestar import Controller, Request, Response
-
+from litestar.exceptions import HTTPException
+from typing import Any, List
+from sqlalchemy.orm import Query
 password_hasher = PasswordHash.recommended()
 
 
@@ -35,7 +37,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         self.update(user)
         self.session.commit()
 
-    def get_one_or_none(self, username: str) -> User:
+    def get_one_or_none(self, username: str) -> Optional[User]: # type: ignore[override]
         """Retrieve one user by username or return None if not found."""
         user = self.session.query(User).filter(User.username == username).first()
         return user 
@@ -43,7 +45,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
     def get_user_by_id(self, user_id: int) -> User:
         user = self.session.query(User).filter(User.id == user_id).one_or_none()
         if not user:
-            raise NotFoundError(f"User with id {user_id} not found")
+            raise HTTPException(detail="Usuario no encontrado.", status_code=404)
         return user
 
 
@@ -53,14 +55,14 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         user_id = payload.get("user_id")
 
         if not user_id:
-            raise AuthenticationError("Token inválido o usuario no encontrado.")
+            raise HTTPException(detail="Token invalido.", status_code=403)
         user = self.get_user_by_id(user_id)
         if not user:
-            raise AuthenticationError("Usuario no encontrado.")
+            raise HTTPException(detail="Usuario no encontrado.", status_code=404)
         
         return user
 
-    def create_token(self,user):
+    def create_token(self,user:User) -> tuple[str, float]:
         secret_key = "secret"
         expiration_time = datetime.utcnow() + timedelta(minutes=180)
         payload = {
@@ -77,7 +79,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         expiration_minutes = (expiration_time - datetime.utcnow()).total_seconds() // 60
         return token, expiration_minutes
 
-    def delete_user(self, user_id: int) -> None:
+    def delete_user(self, user_id: int) -> Response[Any]:
         user = self.session.query(User).filter(User.id == user_id).first()
         
         if not user:
@@ -92,7 +94,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
                 media_type="application/json"
                 )
 
-    def get_user_expenses(self, user_id: int, status: Optional[str] = None):
+    def get_user_expenses(self, user_id: int, status: Optional[str] = None) -> Query[Expense]:
         query = self.session.query(Expense).filter(Expense.created_by_id == user_id)
         
         if status:
@@ -100,7 +102,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         
         return query
 
-    def get_user_debts(self, user_id: int):
+    def get_user_debts(self, user_id: int) ->list[Debt]:
         debts = self.session.query(Debt).filter(
             Debt.user_id == user_id,
             Debt.paid_on.is_(null())
@@ -109,7 +111,7 @@ class UserRepository(SQLAlchemySyncRepository[User]):
         return debts
 
 
-    def get_user_all_debts(self, user_id: int):
+    def get_user_all_debts(self, user_id: int)-> list[Debt]:
         debts = self.session.query(Debt).filter(Debt.user_id == user_id).all()
         return debts
 

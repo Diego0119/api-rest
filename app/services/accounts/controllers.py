@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, Collection
 
 from advanced_alchemy.exceptions import IntegrityError, NotFoundError
 from litestar import Controller, Request, Response, Router, delete, get, patch, post
@@ -40,8 +40,8 @@ class UserController(Controller):
         # request.user does not have a session attached, so we need to fetch the user from the database
         return users_repo.get(request.user.id)
 
-    @get("/{user_id:int}", return_dto=UserFullDTO)
-    async def get_user(self, user_id: int, users_repo: UserRepository) -> UserFullDTO:
+    @get("/{user_id:int}")
+    async def get_user(self, user_id: int, users_repo: UserRepository) -> dict[str, object]:
         try:
             debts = users_repo.get_user_debts(user_id)
             expenses = users_repo.get_user_expenses(user_id, 'PENDING')
@@ -70,16 +70,16 @@ class UserController(Controller):
             
         except NotFoundError:
             raise HTTPException(detail="User not found", status_code=404)
-    @get("/{user_id:int}/expenses", return_dto=UserFullDTO)
-    async def get_user_expenses(self, user_id: int, users_repo: UserRepository) -> list[UserFullDTO]:
+    @get("/{user_id:int}/expenses")
+    async def get_user_expenses(self, user_id: int, users_repo: UserRepository) -> list[dict[str, Any]]:
         try:
             expenses = users_repo.get_user_expenses(user_id)
             return [expense.to_dict() for expense in expenses] 
         except NotFoundError:
             raise HTTPException(detail="Expenses not found", status_code=404)
 
-    @get("/{user_id:int}/debts", return_dto=UserFullDTO)
-    async def get_user_debts(self, user_id: int, users_repo: UserRepository) -> list[UserFullDTO]:
+    @get("/{user_id:int}/debts")
+    async def get_user_debts(self, user_id: int, users_repo: UserRepository) -> list[dict[str, Any]]:
         try:
             debts = users_repo.get_user_all_debts(user_id)
             return [debt.to_dict() for debt in debts] 
@@ -106,13 +106,13 @@ class UserController(Controller):
         current_password: str
         new_password: str
 
-    @post("/me/change-password", return_dto=UserFullDTO)
+    @post("/me/change-password")
     async def change_password(
         self,
         request: "Request[User, Token, Any]",
         users_repo: UserRepository, 
         data: ChangePasswordRequest,
-    ) -> UserFullDTO:
+    ) -> dict[str, Collection[str]]:
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             raise HTTPException(detail="Token de autenticación faltante o inválido", status_code=401)
@@ -124,9 +124,9 @@ class UserController(Controller):
         if data.current_password != user.password:
             raise HTTPException(detail="Contraseña actual incorrecta", status_code=401)
 
-        if data.new_password in user.last_passwords[-3:]:
-            raise HTTPException(detail="La nueva contraseña no puede ser igual a las últimas 3 contraseñas utilizadas", status_code=400)
-        # Verificacion de las ultimas 3 contraseñas
+        # if data.new_password in user.last_passwords[-3:]:
+        #     raise HTTPException(detail="La nueva contraseña no puede ser igual a las últimas 3 contraseñas utilizadas", status_code=400)
+        # # Verificacion de las ultimas 3 contraseñas
         # if data.new_password in user.last_passwords[-3:]:
         #     raise HTTPException(detail="La nueva contraseña no puede ser igual a las últimas 3 contraseñas utilizadas", status_code=400)
 
@@ -136,9 +136,9 @@ class UserController(Controller):
             # users_repo.update_password(user, hashed_new_password)
             users_repo.update_password(user, data.new_password)
 
-            user.last_passwords.append(user.password)  # Agregar la antigua contraseña a la lista
-            if len(user.last_passwords) > 3:
-                user.last_passwords.pop(0)  # Mantener solo las últimas 3 contraseñas
+            # user.last_passwords.append(user.password)  # Agregar la antigua contraseña a la lista
+            # if len(user.last_passwords) > 3:
+            #     user.last_passwords.pop(0)  # Mantener solo las últimas 3 contraseñas
 
             users_repo.update(user)
             user_data = {
@@ -170,7 +170,7 @@ class AuthController(Controller):
         self,
         data: Annotated[Login, Body(media_type=RequestEncodingType.URL_ENCODED)],
         users_repo: UserRepository,
-    ) -> Response:
+    ) -> Response[Any]:
             user = users_repo.get_one_or_none(username=data.username)
 
             if not user or not data.password == user.password:
